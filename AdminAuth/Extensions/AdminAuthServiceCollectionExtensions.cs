@@ -19,6 +19,15 @@ public static class AdminAuthServiceCollectionExtensions
 
     public static IServiceCollection AddAdminAuth(
         this IServiceCollection services,
+        Action<AdminAuthOptions> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+
+        return services.AddAdminAuth(_ => { }, configure);
+    }
+
+    public static IServiceCollection AddAdminAuth(
+        this IServiceCollection services,
         Action<JwtBearerOptions> configureJwtBearer,
         Action<AdminAuthOptions>? configure = null)
     {
@@ -49,6 +58,8 @@ public static class AdminAuthServiceCollectionExtensions
         services.AddScoped<ITotpService, TotpService>();
         services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
         services.AddScoped<IAdministratorManagementService, AdministratorManagementService>();
+        services.AddScoped<IAdminTokenService, AdminTokenService>();
+        services.AddSingleton<IPostConfigureOptions<JwtBearerOptions>, AdminJwtBearerPostConfigure>();
         services.AddSingleton<IAuthorizationHandler, SuperAdminAuthorizationHandler>();
         services.AddSingleton<IAuthorizationHandler, MfaAuthorizationHandler>();
         services.AddScoped<IClaimsTransformation, AdminClaimsTransformation>();

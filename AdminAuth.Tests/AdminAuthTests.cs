@@ -32,8 +32,8 @@ public sealed class AdminAuthTests : IAsyncLifetime
         await _connection.DisposeAsync();
     }
 
-    private AdminAuthDbContext NewContext() => new(
-        new DbContextOptionsBuilder<AdminAuthDbContext>().UseSqlite(_connection).Options);
+    private AdminAuthDbContext NewContext() => new SqliteAdminAuthDbContext(
+        new DbContextOptionsBuilder<SqliteAdminAuthDbContext>().UseSqlite(_connection).Options);
 
     private async Task<AdminUser> AddUserAsync(string name, bool superAdmin = false, bool active = true)
     {

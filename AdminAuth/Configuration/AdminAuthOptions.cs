@@ -10,9 +10,14 @@ public sealed class AdminAuthOptions
     public string ApiKeyPepper { get; set; } = string.Empty;
 
     /// <summary>
-    /// Application name used to isolate Data Protection (TOTP secret) keys. Set it identically on every instance.
+    /// Application name used to isolate
     /// </summary>
     public string DataProtectionApplicationName { get; set; } = "AdminAuth";
+
+    /// <summary>
+    /// Token issuing and validation settings. Leave <c>Jwt.SigningKey</c> empty to configure JWT bearer yourself.
+    /// </summary>
+    public AdminJwtOptions Jwt { get; set; } = new();
 
     /// <summary>
     /// Allows JwtBearerOptions.RequireHttpsMetadata = false. Intended for local development only.

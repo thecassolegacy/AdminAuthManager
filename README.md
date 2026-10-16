@@ -117,6 +117,9 @@ app.Run();
 | `DataProtectionApplicationName` | `AdminAuth` | Data Protection application discriminator for TOTP secrets. Keep it identical on every instance and never change it after enrollment. |
 | `SetAsDefaultScheme` | `false` | When `true`, `AdminAuth` becomes the app's default authenticate/challenge scheme. Otherwise your defaults are kept and the policy helpers still select `AdminAuth`. |
 | `AllowInsecureJwtMetadata` | `false` | Permits `RequireHttpsMetadata = false` (development only). |
+| `Jwt.Issuer`, `Jwt.Audience` | none | Required when `Jwt.SigningKey` is set. |
+| `Jwt.SigningKey` | none | HMAC-SHA256 secret, at least 32 bytes. When set, the library issues tokens and configures JWT bearer validation for you. |
+| `Jwt.TokenLifetime` | 15 minutes | 1 minute to 12 hours. |
 | `LockoutDuration` | 15 minutes | Minimum 1 minute. |
 | `LastUsedUpdateInterval` | 5 minutes | Minimum time between last-used writes. |
 
@@ -285,6 +288,41 @@ The library looks up the key by prefix, verifies the secret in constant time, an
 All failures return the same `401` response. Keys longer than 128 characters are rejected.
 
 ## Authenticate with JWT
+
+### Issue tokens (built in)
+
+Set `Jwt.Issuer`, `Jwt.Audience` and `Jwt.SigningKey` and the library both issues and validates tokens, so the JWT callback can be omitted:
+
+```csharp
+builder.Services.AddAdminAuth(options =>
+{
+    options.ApiKeyPepper = builder.Configuration["AdminAuth:ApiKeyPepper"]!;
+    options.Jwt.Issuer = "https://admin.contoso.test";
+    options.Jwt.Audience = "contoso-admin";
+    options.Jwt.SigningKey = builder.Configuration["AdminAuth:Jwt:SigningKey"]!;
+});
+
+app.MapAdminTokenEndpoint(); // POST /admin/auth/token, anonymous
+```
+
+```http
+POST /admin/auth/token
+Content-Type: application/json
+
+{ "apiKey": "<prefix>.<secret>", "totpCode": "123456" }
+```
+
+- Success returns `200` with `access_token`, `token_type`, `expires_at` and `mfa`.
+- Failures return `401` with `invalid_credentials` (bad, revoked or expired key, inactive or locked-out administrator, wrong code) or `mfa_required` (valid key, factor enrolled, no code sent).
+- The same lockout rules as API-key authentication apply, and a second-factor failure counts against the TOTP lockout.
+- If the administrator has an enabled TOTP factor, a TOTP or recovery code is required and the token carries `admin_mfa = True`. Without an enrolled factor, the token has no `admin_mfa` claim, so MFA policies reject it: enroll TOTP to use them over JWT.
+- Tokens carry only `sub`, `name` and `jti`. Permissions are read from the database on each request.
+
+The key is sent in the JSON body, not a header, and the endpoint is anonymous, so protect it with rate limiting (`RequireRateLimiting(...)`). You can also call `IAdminTokenService.IssueTokenAsync(apiKey, totpCode)` from your own endpoint or login flow. Tokens cannot be revoked before expiry, but a deactivated administrator is rejected on the next request.
+
+### Bring your own issuer
+
+Leave `Jwt.SigningKey` empty and pass a `JwtBearerOptions` callback to `AddAdminAuth`, as shown earlier.
 
 Tokens must satisfy the `JwtBearerOptions` you pass to `AddAdminAuth`. Startup fails unless the options enable HTTPS metadata, issuer, audience, lifetime (with expiration required), signature and signing-key validation, list explicit `ValidAlgorithms` (never `none`), and keep `ClockSkew` at 5 minutes or less.
 
