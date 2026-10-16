@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="AdminAuth.Tests/AdminAuth.Tests.csproj" />
+  <Project Path="AdminAuth/AdminAuth.csproj" />
+</Solution>
